@@ -1,0 +1,5 @@
+menu "Keychron K1 Ultra module"
+config KEYCHRON_K1_ULTRA_CUSTOM
+    bool "Enable Keychron K1 Ultra custom board/shield support"
+    default y
+endmenu
