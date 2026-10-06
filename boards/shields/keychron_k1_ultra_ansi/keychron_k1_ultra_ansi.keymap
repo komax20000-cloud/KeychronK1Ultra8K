@@ -20,6 +20,9 @@
 //     Repeat interval defaults to 30 ms (10-100 ms, in 5 ms steps).
 //     &repeat_rate 0 decreases the interval (faster); &repeat_rate 1 increases it (slower).
 //     Fn+Left/Right adjusts the interval.
+//     Fn+V toggles multi-key repeat: with it on, every held key repeats, otherwise only the newest.
+//     Multi-key repeat only works while repeat is on; Fn+Up turns it on together with repeat and
+//     Fn+Down turns it off together with repeat. Up to 6 keys repeat at once.
 //     Both timings reset to their defaults after reboot.
 //     Modifiers, lock keys, and non-keyboard HID usages do not repeat.
 
@@ -37,6 +40,10 @@
         };
         repeat_delay: repeat_delay {
             compatible = "zmk,behavior-key-repeat-delay";
+            #binding-cells = <1>;
+        };
+        repeat_multi: repeat_multi {
+            compatible = "zmk,behavior-key-repeat-multi";
             #binding-cells = <1>;
         };
         repeat_pause: repeat_pause {
@@ -252,7 +259,7 @@
         &trans                          &bt_pair_0 0 0              &bt_pair_1 0 0              &bt_pair_2 0 0                      &ppt_pair_0 0 0         &trans              &trans              &trans          &trans              &trans      &trans      &trans                      &trans               &trans               &trans                &trans    &trans 
         &rgb_ug RGB_TOG                 &rgb_ug RGB_EFF             &rgb_ug RGB_BRI             &rgb_ug RGB_HUI                     &rgb_ug RGB_SAI         &rgb_ug RGB_SPI     &trans              &trans          &trans              &trans      &trans      &trans                      &trans               &trans               &trans                &trans    &trans  
         &trans                          &rgb_ug RGB_EFR             &rgb_ug RGB_BRD             &rgb_ug RGB_HUD                     &rgb_ug RGB_SAD         &rgb_ug RGB_SPD     &trans              &trans          &trans              &trans      &trans      &trans                                           &repeat_pause
-        &trans                          &repeat_delay 10            &repeat_delay 20                &repeat_delay 50    &trans              &kc BATINFO         &trans          &trans              &trans      &trans      &trans                                           &trans                                     &repeat_toggle 1
+        &trans                          &repeat_delay 10            &repeat_delay 20                &repeat_delay 50    &repeat_multi 2             &kc BATINFO         &trans          &trans              &trans      &trans      &trans                                           &trans                                     &repeat_toggle 1
         &trans                          &trans                      &trans                          &trans              &trans              &trans              &trans              &trans              &repeat_rate 0         &repeat_toggle 0    &repeat_rate 1
         //
         &none                         &trans   &trans                      &trans                      &trans                                               

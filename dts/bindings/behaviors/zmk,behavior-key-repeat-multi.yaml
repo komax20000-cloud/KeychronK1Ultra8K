@@ -1,0 +1,5 @@
+description: Repeat all held keys (param 0 off, 1 on, 2 toggle)
+
+compatible: "zmk,behavior-key-repeat-multi"
+
+include: one_param.yaml

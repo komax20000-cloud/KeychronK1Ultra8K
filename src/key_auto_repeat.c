@@ -17,7 +17,8 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
     (DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_key_repeat_toggle) ||                                  \
      DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_key_repeat_delay) ||                                   \
      DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_key_repeat_rate) ||                                    \
-     DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_key_repeat_pause))
+     DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_key_repeat_pause) ||                                   \
+     DT_HAS_COMPAT_STATUS_OKAY(zmk_behavior_key_repeat_multi))
 
 #if DT_REPEAT_ANY && IS_ENABLED(CONFIG_ZMK_KEY_REPEAT)
 
@@ -28,6 +29,7 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define MAX_RATE_MS 100
 #define RATE_STEP_MS 5
 #define PAUSE_MS 5000
+#define MAX_KEYS 6
 
 #define HID_KEY_CAPS_LOCK 0x39
 #define HID_KEY_SCROLL_LOCK 0x47
@@ -37,20 +39,32 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define HID_KEY_LOCKING_SCROLL 0x84
 
 static bool enabled;
+static bool multi; /* repeat every held key, not just the newest; only effective while enabled */
 static bool paused;
 static bool emitting;
-static bool tracking;
 static uint16_t delay_ms = DEFAULT_DELAY_MS;
 static uint16_t rate_ms = DEFAULT_RATE_MS;
-static struct zmk_keycode_state_changed held;
+
+struct repeat_slot {
+    bool used;
+    uint32_t order; /* press sequence number, higher = newer */
+    int64_t next_ms;
+    struct zmk_keycode_state_changed ev;
+};
+
+static struct repeat_slot slots[MAX_KEYS];
+static uint32_t press_seq;
 
 static void repeat_work_handler(struct k_work *work);
 static void resume_work_handler(struct k_work *work);
 static K_WORK_DELAYABLE_DEFINE(repeat_work, repeat_work_handler);
 static K_WORK_DELAYABLE_DEFINE(resume_work, resume_work_handler);
 
+static bool multi_active(void) { return enabled && multi; }
+
 static bool is_repeatable(const struct zmk_keycode_state_changed *ev) {
-    if (ev->usage_page != HID_USAGE_KEY || ev->explicit_modifiers != 0 || is_mod(ev->usage_page, ev->keycode)) {
+    if (ev->usage_page != HID_USAGE_KEY || ev->explicit_modifiers != 0 ||
+        is_mod(ev->usage_page, ev->keycode)) {
         return false;
     }
 
@@ -67,8 +81,8 @@ static bool is_repeatable(const struct zmk_keycode_state_changed *ev) {
     }
 }
 
-static void emit(bool pressed) {
-    struct zmk_keycode_state_changed ev = held;
+static void emit(const struct zmk_keycode_state_changed *src, bool pressed) {
+    struct zmk_keycode_state_changed ev = *src;
 
     ev.state = pressed;
     ev.timestamp = k_uptime_get();
@@ -77,14 +91,99 @@ static void emit(bool pressed) {
     emitting = false;
 }
 
+static struct repeat_slot *find_slot(const struct zmk_keycode_state_changed *ev) {
+    for (int i = 0; i < MAX_KEYS; i++) {
+        if (slots[i].used && slots[i].ev.usage_page == ev->usage_page &&
+            slots[i].ev.keycode == ev->keycode) {
+            return &slots[i];
+        }
+    }
+    return NULL;
+}
+
+/* Re-arms the single work item for the earliest pending slot, or cancels it if none */
+static void schedule_next(void) {
+    int64_t soonest = INT64_MAX;
+
+    for (int i = 0; i < MAX_KEYS; i++) {
+        if (slots[i].used && slots[i].next_ms < soonest) {
+            soonest = slots[i].next_ms;
+        }
+    }
+
+    if (soonest == INT64_MAX) {
+        k_work_cancel_delayable(&repeat_work);
+    } else {
+        k_work_reschedule(&repeat_work, K_MSEC(MAX(soonest - k_uptime_get(), 0)));
+    }
+}
+
+static void clear_all(void) {
+    for (int i = 0; i < MAX_KEYS; i++) {
+        slots[i].used = false;
+    }
+    k_work_cancel_delayable(&repeat_work);
+}
+
+/* Leaves only the most recently pressed key repeating (single-key mode) */
+static void keep_newest_only(void) {
+    struct repeat_slot *newest = NULL;
+
+    for (int i = 0; i < MAX_KEYS; i++) {
+        if (slots[i].used && (newest == NULL || slots[i].order > newest->order)) {
+            newest = &slots[i];
+        }
+    }
+    for (int i = 0; i < MAX_KEYS; i++) {
+        if (&slots[i] != newest) {
+            slots[i].used = false;
+        }
+    }
+    schedule_next();
+}
+
+static void add_slot(const struct zmk_keycode_state_changed *ev) {
+    struct repeat_slot *slot = find_slot(ev);
+
+    for (int i = 0; slot == NULL && i < MAX_KEYS; i++) {
+        if (!slots[i].used) {
+            slot = &slots[i];
+        }
+    }
+    /* Table full: replace the oldest key */
+    if (slot == NULL) {
+        slot = &slots[0];
+        for (int i = 1; i < MAX_KEYS; i++) {
+            if (slots[i].order < slot->order) {
+                slot = &slots[i];
+            }
+        }
+    }
+
+    slot->used = true;
+    slot->order = ++press_seq;
+    slot->ev = *ev;
+    slot->next_ms = k_uptime_get() + delay_ms;
+}
+
 static void repeat_work_handler(struct k_work *work) {
-    if (!tracking || !enabled || paused) {
+    if (!enabled || paused) {
+        clear_all();
         return;
     }
 
-    emit(false);
-    emit(true);
-    k_work_reschedule(&repeat_work, K_MSEC(rate_ms));
+    int64_t now = k_uptime_get();
+
+    for (int i = 0; i < MAX_KEYS; i++) {
+        if (slots[i].used && slots[i].next_ms <= now) {
+            struct zmk_keycode_state_changed ev = slots[i].ev;
+
+            slots[i].next_ms = now + rate_ms;
+            emit(&ev, false);
+            emit(&ev, true);
+        }
+    }
+    schedule_next();
 }
 
 static void resume_work_handler(struct k_work *work) { paused = false; }
@@ -97,16 +196,22 @@ static int key_auto_repeat_listener(const zmk_event_t *eh) {
     }
 
     if (ev->state) {
-        k_work_cancel_delayable(&repeat_work);
-        tracking = false;
-        if (enabled && !paused && is_repeatable(ev)) {
-            held = *ev;
-            tracking = true;
-            k_work_reschedule(&repeat_work, K_MSEC(delay_ms));
+        /* Single-key mode: any new press ends the previous key's repeat.
+         * Multi-key mode: only repeatable presses are tracked; others leave the rest alone. */
+        if (!multi_active()) {
+            clear_all();
         }
-    } else if (tracking && ev->usage_page == held.usage_page && ev->keycode == held.keycode) {
-        k_work_cancel_delayable(&repeat_work);
-        tracking = false;
+        if (enabled && !paused && is_repeatable(ev)) {
+            add_slot(ev);
+            schedule_next();
+        }
+    } else {
+        struct repeat_slot *slot = find_slot(ev);
+
+        if (slot != NULL) {
+            slot->used = false;
+            schedule_next();
+        }
     }
 
     return ZMK_EV_EVENT_BUBBLE;
@@ -140,15 +245,37 @@ static int repeat_released(struct zmk_behavior_binding *binding,
 static int toggle_pressed(struct zmk_behavior_binding *binding,
                           struct zmk_behavior_binding_event event) {
     enabled = binding->param1 != 0;
+    /* Multi-key repeat follows the main switch: on with repeat, off with repeat */
+    multi = enabled;
     if (!enabled) {
-        k_work_cancel_delayable(&repeat_work);
-        tracking = false;
+        clear_all();
     }
     return ZMK_BEHAVIOR_OPAQUE;
 }
 REPEAT_API(toggle);
 #undef DT_DRV_API_NAME
 #define DT_DRV_API_NAME toggle_api
+DT_INST_FOREACH_STATUS_OKAY(REPEAT_INST)
+#endif
+#undef DT_DRV_COMPAT
+
+/* repeat_multi <0 = off | 1 = on | 2 = toggle>: repeat all held keys. Ignored while repeat is off. */
+#define DT_DRV_COMPAT zmk_behavior_key_repeat_multi
+#if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)
+static int multi_pressed(struct zmk_behavior_binding *binding,
+                         struct zmk_behavior_binding_event event) {
+    if (!enabled) {
+        return ZMK_BEHAVIOR_OPAQUE;
+    }
+    multi = binding->param1 == 2 ? !multi : binding->param1 != 0;
+    if (!multi) {
+        keep_newest_only();
+    }
+    return ZMK_BEHAVIOR_OPAQUE;
+}
+REPEAT_API(multi);
+#undef DT_DRV_API_NAME
+#define DT_DRV_API_NAME multi_api
 DT_INST_FOREACH_STATUS_OKAY(REPEAT_INST)
 #endif
 #undef DT_DRV_COMPAT
@@ -193,8 +320,7 @@ DT_INST_FOREACH_STATUS_OKAY(REPEAT_INST)
 static int pause_pressed(struct zmk_behavior_binding *binding,
                          struct zmk_behavior_binding_event event) {
     paused = true;
-    k_work_cancel_delayable(&repeat_work);
-    tracking = false;
+    clear_all();
     k_work_reschedule(&resume_work, K_MSEC(PAUSE_MS));
     return ZMK_BEHAVIOR_OPAQUE;
 }
