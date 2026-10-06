@@ -6,11 +6,12 @@ Supported boards: the Ultra models from the original tool plus **K1 Ultra 8K ANS
 
 ## Use
 Connect the keyboard by USB and close the Keychron Launcher/browser tabs using it, then:
+- start `Realtek_HID_flasher.exe` with no arguments, use Up/Down to choose a `.bin` in the same folder, and press Enter, or
 - drag a `.bin` onto `Realtek_HID_flasher.exe`, or
 - `Realtek_HID_flasher.exe handshake` (read-only identify), or
 - `Realtek_HID_flasher.exe flash firmware\20261006_K1UltraAnsi_04.bin`
 
-It identifies the keyboard first and aborts before any write on an unknown model. The image goes to a staging bank and is only activated after the keyboard verifies its CRC. With two Keychron boards connected, pass `--path=<HID path>` as listed by the tool.
+Every flash asks for Y/N confirmation first. Press Esc in the image list to cancel. It identifies the keyboard first and aborts before any write on an unknown model. The image goes to a staging bank and is only activated after the keyboard verifies its CRC. With two Keychron boards connected, pass `--path=<HID path>` as listed by the tool.
 
 ## Build
 `./build.sh` (Linux, needs `go` and `pip install ziglang`) runs the tests and cross-compiles the exe into `firmware/`.
