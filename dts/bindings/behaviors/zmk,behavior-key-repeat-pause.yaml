@@ -1,0 +1,5 @@
+description: Pause key auto-repeat for a few seconds
+
+compatible: "zmk,behavior-key-repeat-pause"
+
+include: zero_param.yaml

@@ -2,4 +2,12 @@ menu "Keychron K1 Ultra module"
 config KEYCHRON_K1_ULTRA_CUSTOM
     bool "Enable Keychron K1 Ultra custom board/shield support"
     default y
+
+config RTK_DFU
+    bool "Enable Realtek DFU"
+    default y
+
+config ZMK_KEY_REPEAT
+    bool "Enable device-side key auto-repeat behaviors"
+    default y
 endmenu

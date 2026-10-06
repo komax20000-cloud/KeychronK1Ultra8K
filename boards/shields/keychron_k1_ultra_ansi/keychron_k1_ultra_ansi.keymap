@@ -23,6 +23,8 @@
 //     Both timings reset to their defaults after reboot.
 //     Modifiers, lock keys, and non-keyboard HID usages do not repeat.
 
+// FUCK YOU
+
 / {
     behaviors {
         repeat_rate: repeat_rate {
@@ -123,6 +125,14 @@
     //     tapping-term-ms = <2000>;  // delay amount in ms
     //     bindings = <&kc NKRO>, <&none>;
     // };
+    // Custom key slots: place &custom_key_1 / &custom_key_2 in any layer.
+    // Edit only the bindings below to define what each key does, e.g.
+    //   bindings = <&kp LC(C)>;                      // single key / shortcut
+    //   bindings = <&kp H &kp I>;                    // key sequence
+    //   bindings = <&kc BATINFO>;                    // Keychron function
+    // They are unassigned (&none) until changed.
+    ZMK_MACRO(custom_key_1, bindings = <&none>;)
+    ZMK_MACRO(custom_key_2, bindings = <&none>;)
     ZMK_MACRO(bt_pair0, bindings = <&kc BT_PAIR 0>;)
     ZMK_MACRO(bt_pair1, bindings = <&kc BT_PAIR 1>;)
     ZMK_MACRO(bt_pair2, bindings = <&kc BT_PAIR 2>;)

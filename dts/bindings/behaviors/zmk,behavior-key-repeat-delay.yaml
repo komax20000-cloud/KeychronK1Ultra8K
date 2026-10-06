@@ -1,0 +1,5 @@
+description: Key auto-repeat delay control behavior
+
+compatible: "zmk,behavior-key-repeat-delay"
+
+include: one_param.yaml

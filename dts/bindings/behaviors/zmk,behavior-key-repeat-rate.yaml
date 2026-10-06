@@ -1,0 +1,5 @@
+description: Key auto-repeat rate control behavior
+
+compatible: "zmk,behavior-key-repeat-rate"
+
+include: one_param.yaml

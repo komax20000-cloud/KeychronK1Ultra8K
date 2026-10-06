@@ -1,0 +1,5 @@
+description: Key auto-repeat toggle control behavior
+
+compatible: "zmk,behavior-key-repeat-toggle"
+
+include: one_param.yaml
