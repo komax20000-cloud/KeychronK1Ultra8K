@@ -1,0 +1,41 @@
+name: Build flasher exe
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tools/flasher/**'
+      - '.github/workflows/flasher.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  exe:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        working-directory: tools/flasher
+        run: python -m pip install -r requirements.txt
+      - name: Protocol test (simulated keyboard)
+        working-directory: tools/flasher
+        run: python -c "import test_protocol as t; t.test_flash_ok(); t.test_bad_crc_does_not_switch()"
+      - name: Build exe
+        working-directory: tools/flasher
+        run: python -m PyInstaller --onefile --console --name keychron_flasher keychron_flasher.py
+      - name: Smoke test (no keyboard attached must fail cleanly)
+        working-directory: tools/flasher
+        shell: bash
+        run: |
+          set +e
+          out=$(./dist/keychron_flasher.exe handshake 2>&1); rc=$?
+          echo "$out"; [ $rc -eq 2 ] && echo "$out" | grep -q "not found"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: keychron_flasher.exe
+          path: tools/flasher/dist/keychron_flasher.exe
+          if-no-files-found: error

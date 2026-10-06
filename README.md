@@ -37,3 +37,7 @@ The module's `boards/shields/keychron_k1_ultra_ansi/` holds only the keymap and 
 ## Key auto-repeat LED indication
 
 While key auto-repeat is enabled (`repeat_toggle 1`), the F1–F12 LEDs are forced into a pulsing wave and the Up key LED is kept lit, regardless of the active RGB effect. Both turn off again when repeat is disabled (`repeat_toggle 0`). Implemented in `src/key_repeat_led.c` by wrapping `zmk_rgb_matrix_update_pwm_buffers()` at link time, so the ZMK fork is not modified. The overlay uses the current RGB hue/saturation and brightness, and is not drawn while RGB is off or the keyboard is asleep.
+
+## Flasher
+
+[tools/flasher/](tools/flasher) has a Windows exe flasher for the built `.bin` (see its README).
