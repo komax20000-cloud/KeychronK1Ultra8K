@@ -13,8 +13,8 @@
 #include <dt-bindings/zmk/keychron.h>
 
 // [1] Enable with CONFIG_ZMK_KEY_REPEAT=y (already set in this shield's .conf).
-//     Repeat is off by default; Fn+Up enables it, Fn+Down disables it, and Fn+Enter pauses it for 5 seconds.
-//     Pressing Fn+Enter again during the pause restarts the 5-second countdown.
+//     Repeat is off by default; Fn+Up enables it, Fn+Down disables it, and, while it is on, pressing Enter pauses it for 5 seconds.
+//     Pressing Enter again during the pause restarts the 5-second countdown.
 //     Bind repeatable keys normally, e.g. &kp A or &kp BACKSPACE; they repeat while enabled.
 //     Fn+Z/X/C sets the first-repeat delay to 10/20/50 ms; default is 20 ms.
 //     Repeat interval defaults to 30 ms (10-100 ms, in 5 ms steps).
@@ -24,7 +24,7 @@
 //     Multi-key repeat only works while repeat is on; Fn+Up turns it on together with repeat and
 //     Fn+Down turns it off together with repeat. Up to 6 keys repeat at once.
 //     Both timings reset to their defaults after reboot.
-//     Modifiers, lock keys, and non-keyboard HID usages do not repeat.
+//     Only 1-5, Q and E repeat; all other keys never repeat (edit is_repeatable() in src/key_auto_repeat.c).
 
 // FUCK YOU
 
@@ -258,7 +258,7 @@
         &trans                          &kp C_BRIGHTNESS_DEC        &kp C_BRIGHTNESS_INC        &uc LG(TAB)                         &uc LG(E)               &rgb_ug RGB_BRD     &rgb_ug RGB_BRI     &kp C_PREVIOUS  &kp C_PLAY_PAUSE    &kp C_NEXT  &kp C_MUTE  &kp C_VOLUME_DOWN           &kp C_VOLUME_UP      &rgb_ug RGB_TOG      &trans                &trans    &rgb_ug RGB_TOG                              
         &trans                          &bt_pair_0 0 0              &bt_pair_1 0 0              &bt_pair_2 0 0                      &ppt_pair_0 0 0         &trans              &trans              &trans          &trans              &trans      &trans      &trans                      &trans               &trans               &trans                &trans    &trans 
         &rgb_ug RGB_TOG                 &rgb_ug RGB_EFF             &rgb_ug RGB_BRI             &rgb_ug RGB_HUI                     &rgb_ug RGB_SAI         &rgb_ug RGB_SPI     &trans              &trans          &trans              &trans      &trans      &trans                      &trans               &trans               &trans                &trans    &trans  
-        &trans                          &rgb_ug RGB_EFR             &rgb_ug RGB_BRD             &rgb_ug RGB_HUD                     &rgb_ug RGB_SAD         &rgb_ug RGB_SPD     &trans              &trans          &trans              &trans      &trans      &trans                                           &repeat_pause
+        &trans                          &rgb_ug RGB_EFR             &rgb_ug RGB_BRD             &rgb_ug RGB_HUD                     &rgb_ug RGB_SAD         &rgb_ug RGB_SPD     &trans              &trans          &trans              &trans      &trans      &trans                                           &trans
         &trans                          &repeat_delay 10            &repeat_delay 20                &repeat_delay 50    &repeat_multi 2             &kc BATINFO         &trans          &trans              &trans      &trans      &trans                                           &trans                                     &repeat_toggle 1
         &trans                          &trans                      &trans                          &trans              &trans              &trans              &trans              &trans              &repeat_rate 0         &repeat_toggle 0    &repeat_rate 1
         //

@@ -1,6 +1,6 @@
 # Keychron K1 Ultra 8K ANSI ZMK module
 
-This repository contains the custom ZMK module for the Keychron K1 Ultra 8K ANSI. It provides this project's keymap and configuration, device-side key auto-repeat behaviors, an RGB indicator for repeat mode, and two user-editable key slots.
+This repository contains the custom ZMK module for the Keychron K1 Ultra 8K ANSI. It provides this project's keymap and configuration, device-side key auto-repeat behaviors, and two user-editable key slots.
 
 The board definition, shield implementation, ZMK application, Zephyr, and Realtek HAL come from Keychron's Realtek-enabled ZMK fork. The fork and its west-managed dependencies are pinned to exact revisions; this module does not modify the workspace's ZMK sources.
 
@@ -9,12 +9,11 @@ The board definition, shield implementation, ZMK application, Zephyr, and Realte
 - Custom keymap and shield configuration for the K1 Ultra 8K ANSI.
 - Optional device-side auto-repeat for held keyboard keys:
   - Repeat is off by default. `Fn+Up` enables it; `Fn+Down` disables it.
-  - `Fn+Enter` pauses repeat for five seconds. Press it again during the pause to restart the timer.
+  - While repeat is enabled, pressing `Enter` pauses repeat for five seconds. Press it again during the pause to restart the timer.
   - `Fn+Z`, `Fn+X`, and `Fn+C` set the first-repeat delay to 10, 20, and 50 ms. The default is 20 ms.
   - `Fn+Left` and `Fn+Right` adjust the repeat interval in 5 ms steps from 10 to 100 ms. The default is 30 ms.
   - `Fn+V` toggles multi-key repeat. When enabled, up to six held keys repeat; otherwise only the most recently pressed key repeats. Multi-key mode is enabled and disabled along with repeat.
-  - Modifiers, lock keys, and non-keyboard HID usages do not repeat. Delay and interval settings return to their defaults after reboot.
-- While repeat is enabled and RGB is on, the F1–F12 LEDs pulse in a wave and the Up LED stays lit. The indicator follows the configured RGB hue and saturation, and is hidden while the keyboard is asleep.
+  - Only `1`–`5`, `Q`, and `E` repeat; all other keys never repeat. Delay and interval settings return to their defaults after reboot.
 - Two unassigned custom key slots, `&custom_key_1` and `&custom_key_2`, that can be bound to a key, shortcut, or macro in the keymap.
 
 ## Build firmware
@@ -54,7 +53,7 @@ Do not run `west update` while offline; it fetches projects from their remotes. 
 
 ### Update pinned dependencies
 
-Change the revisions in `deps.env`, then run `setup-workspace.sh` against a fresh `ZMK_DIR` and update `deps.lock` with the resolved west project SHAs. Review `src/key_auto_repeat.c` and `src/key_repeat_led.c` when changing the fork revision; they rely on ZMK internals, including its keycode event and RGB buffer-update function.
+Change the revisions in `deps.env`, then run `setup-workspace.sh` against a fresh `ZMK_DIR` and update `deps.lock` with the resolved west project SHAs. Review `src/key_auto_repeat.c` when changing the fork revision; they rely on ZMK internals, including its keycode event and RGB buffer-update function.
 
 ## Continuous integration
 

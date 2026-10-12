@@ -31,12 +31,15 @@ LOG_MODULE_DECLARE(zmk, CONFIG_ZMK_LOG_LEVEL);
 #define PAUSE_MS 5000
 #define MAX_KEYS 6
 
-#define HID_KEY_CAPS_LOCK 0x39
-#define HID_KEY_SCROLL_LOCK 0x47
-#define HID_KEY_NUM_LOCK 0x53
-#define HID_KEY_LOCKING_CAPS 0x82
-#define HID_KEY_LOCKING_NUM 0x83
-#define HID_KEY_LOCKING_SCROLL 0x84
+#define HID_KEY_ENTER 0x28
+#define HID_KEY_KEYPAD_ENTER 0x58
+#define REPEAT_KEY_E 0x08
+#define REPEAT_KEY_Q 0x14
+#define REPEAT_KEY_1 0x1E
+#define REPEAT_KEY_2 0x1F
+#define REPEAT_KEY_3 0x20
+#define REPEAT_KEY_4 0x21
+#define REPEAT_KEY_5 0x22
 
 static bool enabled;
 static bool multi; /* repeat every held key, not just the newest; only effective while enabled */
@@ -69,15 +72,16 @@ static bool is_repeatable(const struct zmk_keycode_state_changed *ev) {
     }
 
     switch (ev->keycode) {
-    case HID_KEY_CAPS_LOCK:
-    case HID_KEY_SCROLL_LOCK:
-    case HID_KEY_NUM_LOCK:
-    case HID_KEY_LOCKING_CAPS:
-    case HID_KEY_LOCKING_NUM:
-    case HID_KEY_LOCKING_SCROLL:
-        return false;
-    default:
+    case REPEAT_KEY_1:
+    case REPEAT_KEY_2:
+    case REPEAT_KEY_3:
+    case REPEAT_KEY_4:
+    case REPEAT_KEY_5:
+    case REPEAT_KEY_Q:
+    case REPEAT_KEY_E:
         return true;
+    default:
+        return false;
     }
 }
 
@@ -188,10 +192,23 @@ static void repeat_work_handler(struct k_work *work) {
 
 static void resume_work_handler(struct k_work *work) { paused = false; }
 
+static void start_pause(void) {
+    paused = true;
+    clear_all();
+    k_work_reschedule(&resume_work, K_MSEC(PAUSE_MS));
+}
+
 static int key_auto_repeat_listener(const zmk_event_t *eh) {
     struct zmk_keycode_state_changed *ev = as_zmk_keycode_state_changed(eh);
 
     if (ev == NULL || emitting) {
+        return ZMK_EV_EVENT_BUBBLE;
+    }
+
+    /* Pressing Enter while repeat is on suspends repeat for 5 s; pressing it again restarts the countdown */
+    if (ev->state && enabled && ev->usage_page == HID_USAGE_KEY &&
+        (ev->keycode == HID_KEY_ENTER || ev->keycode == HID_KEY_KEYPAD_ENTER)) {
+        start_pause();
         return ZMK_EV_EVENT_BUBBLE;
     }
 
@@ -319,9 +336,7 @@ DT_INST_FOREACH_STATUS_OKAY(REPEAT_INST)
 #if DT_HAS_COMPAT_STATUS_OKAY(DT_DRV_COMPAT)
 static int pause_pressed(struct zmk_behavior_binding *binding,
                          struct zmk_behavior_binding_event event) {
-    paused = true;
-    clear_all();
-    k_work_reschedule(&resume_work, K_MSEC(PAUSE_MS));
+    start_pause();
     return ZMK_BEHAVIOR_OPAQUE;
 }
 REPEAT_API(pause);
